@@ -1,6 +1,17 @@
 # Compiled class file
 *.class
 
+# Maven / Quarkus
+target/
+.quarkus/
+
+# AWS SAM
+.aws-sam/
+
+# IDE
+.vscode/
+.idea/
+
 # Log file
 *.log
 
