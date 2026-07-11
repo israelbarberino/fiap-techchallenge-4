@@ -7,12 +7,14 @@ import br.com.fiap.techchallenge4.domain.model.Urgency;
 import br.com.fiap.techchallenge4.domain.valueobject.FeedbackId;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
+import jakarta.inject.Named;
 
 import java.time.Instant;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
+@Named("critical-notification")
 public class CriticalNotificationHandler implements RequestHandler<Map<String, Object>, Void> {
 
     private final NotifyCriticalFeedbackInputPort useCase = ApplicationModule.notifyCriticalFeedbackUseCase();
