@@ -102,12 +102,15 @@ Resources:
   CreateFeedback:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: .
-      Handler: br.com.fiap.techchallenge4.adapters.inbound.CreateFeedbackHandler::handleRequest
+      CodeUri: target/function.zip
+      Handler: io.quarkus.amazon.lambda.runtime.QuarkusStreamHandler::handleRequest
       Runtime: java21
       Role: !GetAtt CreateFeedbackRole.Arn
       MemorySize: 512
       Timeout: 30
+      Environment:
+        Variables:
+          QUARKUS_LAMBDA_HANDLER: create-feedback
       Events:
         CreateFeedbackApi:
           Type: HttpApi
@@ -115,32 +118,32 @@ Resources:
             ApiId: !Ref HttpApi
             Path: /feedback
             Method: POST
-    Metadata:
-      BuildMethod: maven
 
   CriticalNotification:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: .
-      Handler: br.com.fiap.techchallenge4.adapters.inbound.CriticalNotificationHandler::handleRequest
+      CodeUri: target/function.zip
+      Handler: io.quarkus.amazon.lambda.runtime.QuarkusStreamHandler::handleRequest
       Runtime: java21
       Role: !GetAtt CriticalNotificationRole.Arn
       MemorySize: 512
       Timeout: 30
-    Metadata:
-      BuildMethod: maven
+      Environment:
+        Variables:
+          QUARKUS_LAMBDA_HANDLER: critical-notification
 
   WeeklyReport:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: .
-      Handler: br.com.fiap.techchallenge4.adapters.inbound.WeeklyReportHandler::handleRequest
+      CodeUri: target/function.zip
+      Handler: io.quarkus.amazon.lambda.runtime.QuarkusStreamHandler::handleRequest
       Runtime: java21
       Role: !GetAtt WeeklyReportRole.Arn
       MemorySize: 512
       Timeout: 30
-    Metadata:
-      BuildMethod: maven
+      Environment:
+        Variables:
+          QUARKUS_LAMBDA_HANDLER: weekly-report
 
   CreateFeedbackLogGroup:
     Type: AWS::Logs::LogGroup
