@@ -1,0 +1,270 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: fiap-techchallenge-4 - Infraestrutura SAM
+
+Parameters:
+  SesFromEmail:
+    Type: String
+    Description: E-mail remetente verificado no SES
+  SesToEmail:
+    Type: String
+    Description: E-mail destinatario verificado no SES
+
+Resources:
+  HttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: $default
+
+  FeedbackTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: Feedback
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: feedbackId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: feedbackId
+          KeyType: HASH
+
+  CreateFeedbackRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: create-feedback-logs
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub '${CreateFeedbackLogGroup.Arn}:*'
+        - PolicyName: create-feedback-dynamodb
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:PutItem
+                Resource: !GetAtt FeedbackTable.Arn
+        - PolicyName: create-feedback-eventbridge
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - events:PutEvents
+                Resource: !Sub 'arn:${AWS::Partition}:events:${AWS::Region}:${AWS::AccountId}:event-bus/default'
+
+  CriticalNotificationRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: critical-notification-logs
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub '${CriticalNotificationLogGroup.Arn}:*'
+        - PolicyName: critical-notification-ses
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ses:SendEmail
+                Resource: '*'
+
+  WeeklyReportRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: weekly-report-logs
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub '${WeeklyReportLogGroup.Arn}:*'
+        - PolicyName: weekly-report-dynamodb
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:Scan
+                Resource: !GetAtt FeedbackTable.Arn
+        - PolicyName: weekly-report-ses
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ses:SendEmail
+                Resource: '*'
+
+  CreateFeedback:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: target/function.zip
+      Handler: io.quarkus.amazon.lambda.runtime.QuarkusStreamHandler::handleRequest
+      Runtime: java21
+      Role: !GetAtt CreateFeedbackRole.Arn
+      MemorySize: 512
+      Timeout: 30
+      Environment:
+        Variables:
+          QUARKUS_LAMBDA_HANDLER: create-feedback
+          FEEDBACK_TABLE: !Ref FeedbackTable
+      Events:
+        CreateFeedbackApi:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /feedback
+            Method: POST
+
+  CriticalNotification:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: target/function.zip
+      Handler: io.quarkus.amazon.lambda.runtime.QuarkusStreamHandler::handleRequest
+      Runtime: java21
+      Role: !GetAtt CriticalNotificationRole.Arn
+      MemorySize: 512
+      Timeout: 30
+      Environment:
+        Variables:
+          QUARKUS_LAMBDA_HANDLER: critical-notification
+          SES_FROM: !Ref SesFromEmail
+          SES_TO: !Ref SesToEmail
+
+  WeeklyReport:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: target/function.zip
+      Handler: io.quarkus.amazon.lambda.runtime.QuarkusStreamHandler::handleRequest
+      Runtime: java21
+      Role: !GetAtt WeeklyReportRole.Arn
+      MemorySize: 512
+      Timeout: 30
+      Environment:
+        Variables:
+          QUARKUS_LAMBDA_HANDLER: weekly-report
+          FEEDBACK_TABLE: !Ref FeedbackTable
+          SES_FROM: !Ref SesFromEmail
+          SES_TO: !Ref SesToEmail
+
+  CreateFeedbackLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${CreateFeedback}'
+      RetentionInDays: 14
+
+  CriticalNotificationLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${CriticalNotification}'
+      RetentionInDays: 14
+
+  WeeklyReportLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${WeeklyReport}'
+      RetentionInDays: 14
+
+  FeedbackCreatedRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: FeedbackCreatedRule
+      EventPattern:
+        source:
+          - fiap.feedback
+        detail-type:
+          - FeedbackCreated
+      Targets:
+        - Id: CriticalNotificationTarget
+          Arn: !GetAtt CriticalNotification.Arn
+
+  FeedbackCreatedRuleInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref CriticalNotification
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt FeedbackCreatedRule.Arn
+
+  WeeklyReportScheduleRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: WeeklyReportScheduleRule
+      ScheduleExpression: cron(0 9 ? * MON *)
+      State: ENABLED
+      Targets:
+        - Id: WeeklyReportTarget
+          Arn: !GetAtt WeeklyReport.Arn
+
+  WeeklyReportScheduleInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref WeeklyReport
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt WeeklyReportScheduleRule.Arn
+
+Outputs:
+  HttpApiEndpoint:
+    Description: Endpoint da HTTP API
+    Value: !GetAtt HttpApi.ApiEndpoint
+
+  CreateFeedbackFunctionArn:
+    Description: ARN da Lambda CreateFeedback
+    Value: !GetAtt CreateFeedback.Arn
+
+  CriticalNotificationFunctionArn:
+    Description: ARN da Lambda CriticalNotification
+    Value: !GetAtt CriticalNotification.Arn
+
+  WeeklyReportFunctionArn:
+    Description: ARN da Lambda WeeklyReport
+    Value: !GetAtt WeeklyReport.Arn
+
+  FeedbackTableName:
+    Description: Nome da tabela de feedback
+    Value: !Ref FeedbackTable
+
+  FeedbackCreatedRuleArn:
+    Description: ARN da regra FeedbackCreated
+    Value: !GetAtt FeedbackCreatedRule.Arn
+
+  WeeklyReportScheduleRuleArn:
+    Description: ARN da regra semanal
+    Value: !GetAtt WeeklyReportScheduleRule.Arn
