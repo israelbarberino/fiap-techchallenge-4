@@ -6,36 +6,37 @@ Implementar uma API serverless para registro e tratamento de feedbacks, com arqu
 
 ## Arquitetura
 
-Padrão Ports and Adapters (Clean Architecture simplificada):
+Padrao Ports and Adapters (Clean Architecture simplificada):
 
 - Domain: entidades, enums e value objects.
-- Application: casos de uso e portas de entrada/saída.
+- Application: casos de uso e portas de entrada/saida.
 - Adapters Inbound: handlers Lambda que recebem eventos e delegam para casos de uso.
-- Adapters Outbound: integrações com DynamoDB, EventBridge e SES via ports.
-- Config: composição dos casos de uso com adapters.
+- Adapters Outbound: integracoes com DynamoDB, EventBridge e SES via ports.
+- Config: composicao dos casos de uso com adapters.
 
 ## Diagrama Mermaid
 
 ```mermaid
 flowchart LR
-		API[HTTP API Gateway] --> CF[Lambda CreateFeedback]
-		EBR[EventBridge Rule FeedbackCreated] --> CN[Lambda CriticalNotification]
-		SCH[EventBridge Schedule Weekly] --> WR[Lambda WeeklyReport]
+  Client[Cliente HTTP] -->|POST /feedback| API[API Gateway HTTP API]
+  API --> CF[Lambda CreateFeedback]
+  CF --> UC1[CreateFeedbackUseCase]
+  UC1 --> DDB[(DynamoDB Feedback)]
+  UC1 --> EB[EventBridge default bus]
 
-		CF --> U1[CreateFeedbackUseCase]
-		CN --> U2[NotifyCriticalFeedbackUseCase]
-		WR --> U3[GenerateWeeklyReportUseCase]
+  EBR[Rule FeedbackCreatedRule] --> CN[Lambda CriticalNotification]
+  EB --> EBR
+  CN --> UC2[NotifyCriticalFeedbackUseCase]
+  UC2 -->|urgency CRITICAL| SES1[SES SendEmail]
 
-		U1 --> RP[FeedbackRepositoryPort]
-		U1 --> EP[FeedbackCreatedEventPort]
-		U2 --> NP[CriticalNotificationPort]
-		U3 --> RP
-		U3 --> WP[WeeklyReportPort]
+  SCH[Rule WeeklyReportScheduleRule cron MON 09:00 UTC] --> WR[Lambda WeeklyReport]
+  WR --> UC3[GenerateWeeklyReportUseCase]
+  UC3 --> DDB
+  UC3 --> SES2[SES SendEmail]
 
-		RP --> DDB[(DynamoDB Feedback)]
-		EP --> EB[EventBridge]
-		NP --> SES1[SES]
-		WP --> SES2[SES]
+  CF --> CW1[CloudWatch Logs]
+  CN --> CW2[CloudWatch Logs]
+  WR --> CW3[CloudWatch Logs]
 ```
 
 ## Estrutura
@@ -46,7 +47,7 @@ flowchart LR
 - src/main/java/br/com/fiap/techchallenge4/adapters/outbound
 - src/main/java/br/com/fiap/techchallenge4/config
 - template.yaml
-- .github/workflows/ci-cd-sam.yml
+- .github/workflows/deploy.yml
 
 ## Tecnologias
 
@@ -63,7 +64,7 @@ flowchart LR
 
 ## Como executar
 
-Pré-requisitos:
+Pre-requisitos:
 
 - Java 21
 - Maven 3.9+
@@ -73,21 +74,22 @@ Pré-requisitos:
 Comandos:
 
 ```bash
-mvn clean test
-sam build --template-file template.yaml
+mvn clean verify
+mvn package
+ls target/function.zip
 sam local start-api
 ```
 
 API local:
 
-- POST http://127.0.0.1:3000/feedback
+- POST <http://127.0.0.1:3000/feedback>
 
 Exemplo de payload:
 
 ```json
 {
-	"content": "Excelente atendimento",
-	"urgency": "MEDIUM"
+  "content": "Excelente atendimento",
+  "urgency": "MEDIUM"
 }
 ```
 
@@ -96,23 +98,31 @@ Exemplo de payload:
 Manual:
 
 ```bash
-sam build --template-file template.yaml
+mvn clean package
 sam deploy \
-	--stack-name fiap-techchallenge-4 \
-	--region us-east-1 \
-	--capabilities CAPABILITY_IAM \
-	--no-confirm-changeset \
-	--no-fail-on-empty-changeset
+  --template-file template.yaml \
+  --stack-name fiap-techchallenge-4 \
+  --region us-east-1 \
+  --capabilities CAPABILITY_IAM \
+  --resolve-s3 \
+  --parameter-overrides SesFromEmail=seu-email@dominio.com SesToEmail=destino@dominio.com \
+  --no-confirm-changeset \
+  --no-fail-on-empty-changeset
 ```
 
 GitHub Actions:
 
-- Workflow: .github/workflows/ci-cd-sam.yml
+- Workflow: .github/workflows/deploy.yml
 - Secrets esperados:
 - AWS_ACCESS_KEY_ID
 - AWS_SECRET_ACCESS_KEY
 - AWS_REGION
-- SAM_STACK_NAME
+- SES_FROM_EMAIL
+- SES_TO_EMAIL
+
+Pre-requisito para envio de e-mail:
+
+- Verificar as identidades de remetente e destinatario no SES da mesma regiao do deploy.
 
 ## Como testar
 
@@ -125,10 +135,10 @@ mvn test
 Teste da API local:
 
 ```bash
-sam local start-api
+sam local start-api --template template.yaml
 ```
 
-Enviar requisição POST para /feedback.
+Enviar requisicao POST para /feedback.
 
 ## Monitoramento
 
@@ -141,14 +151,14 @@ Enviar requisição POST para /feedback.
 ## Lambdas
 
 - CreateFeedback: recebe feedback via HTTP, cria registro e publica evento FeedbackCreated.
-- CriticalNotification: processa evento FeedbackCreated e notifica quando urgência for CRITICAL.
-- WeeklyReport: executa semanalmente e gera relatório agregado.
+- CriticalNotification: processa evento FeedbackCreated e notifica quando urgencia for CRITICAL.
+- WeeklyReport: executa semanalmente e gera relatorio agregado.
 
 ## Banco
 
 - DynamoDB
 - Tabela: Feedback
-- Chave primária: feedbackId (String)
+- Chave primaria: feedbackId (String)
 - Billing mode: PAY_PER_REQUEST
 
 ## API
@@ -167,12 +177,41 @@ Enviar requisição POST para /feedback.
 4. Rule FeedbackCreated aciona CriticalNotification Lambda.
 5. Use case notifica via SES apenas para CRITICAL.
 6. Schedule semanal aciona WeeklyReport Lambda.
-7. Use case agrega dados e envia relatório via SES.
+7. Use case agrega dados e envia relatorio via SES.
 
-## Limitações
+## Limitacoes
 
-- Sem autenticação/autorização na API.
-- Sem paginação e sem consultas avançadas de feedback.
-- findBetween usa Scan no DynamoDB (adequado para escopo acadêmico, não otimizado para alto volume).
+- Sem autenticacao/autorizacao na API.
+- Sem paginacao e sem consultas avancadas de feedback.
+- findBetween usa Scan no DynamoDB (adequado para escopo academico, nao otimizado para alto volume).
 - Sem DLQ, retry policy customizada e alarmes detalhados.
-- Sem testes de integração com serviços AWS reais.
+- Sem testes de integracao com servicos AWS reais.
+
+## Validacao pos-deploy
+
+```bash
+# 1. Stack criada
+aws cloudformation describe-stacks --stack-name fiap-techchallenge-4
+
+# 2. Outputs
+aws cloudformation describe-stacks --stack-name fiap-techchallenge-4 \
+  --query "Stacks[0].Outputs"
+
+# 3. Lambdas
+aws lambda list-functions --query "Functions[?contains(FunctionName,'fiap-techchallenge-4')].FunctionName"
+
+# 4. DynamoDB
+aws dynamodb describe-table --table-name Feedback
+
+# 5. EventBridge
+aws events list-rules --name-prefix Feedback
+aws events list-rules --name-prefix WeeklyReport
+
+# 6. Log groups
+aws logs describe-log-groups --log-group-name-prefix /aws/lambda/
+
+# 7. Smoke test API
+curl -X POST https://<HttpApiEndpoint>/feedback \
+  -H "Content-Type: application/json" \
+  -d '{"content":"Teste deploy","urgency":"CRITICAL"}'
+```
