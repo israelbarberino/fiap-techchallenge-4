@@ -54,15 +54,20 @@ jobs:
           SES_FROM_EMAIL: ${{ secrets.SES_FROM_EMAIL }}
           SES_TO_EMAIL: ${{ secrets.SES_TO_EMAIL }}
         run: |
-          PARAMS=""
-          [ -n "$SES_FROM_EMAIL" ] && PARAMS="$PARAMS SesFromEmail=$SES_FROM_EMAIL"
-          [ -n "$SES_TO_EMAIL" ] && PARAMS="$PARAMS SesToEmail=$SES_TO_EMAIL"
+          PARAMS=()
+          [ -n "$SES_FROM_EMAIL" ] && PARAMS+=("SesFromEmail=$SES_FROM_EMAIL")
+          [ -n "$SES_TO_EMAIL" ] && PARAMS+=("SesToEmail=$SES_TO_EMAIL")
+          if [ ${#PARAMS[@]} -gt 0 ]; then
+            PARAM_OVERRIDES="--parameter-overrides ${PARAMS[*]}"
+          else
+            PARAM_OVERRIDES=""
+          fi
           sam deploy \
             --template-file template.yaml \
             --stack-name fiap-techchallenge-4 \
             --region ${{ secrets.AWS_REGION }} \
             --capabilities CAPABILITY_IAM \
             --resolve-s3 \
-            ${PARAMS:+--parameter-overrides $PARAMS} \
+            $PARAM_OVERRIDES \
             --no-confirm-changeset \
             --no-fail-on-empty-changeset
