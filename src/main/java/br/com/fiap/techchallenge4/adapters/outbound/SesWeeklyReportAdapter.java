@@ -2,6 +2,7 @@ package br.com.fiap.techchallenge4.adapters.outbound;
 
 import br.com.fiap.techchallenge4.application.port.out.WeeklyReportPort;
 import br.com.fiap.techchallenge4.application.usecase.dto.WeeklyReport;
+import software.amazon.awssdk.http.urlconnection.UrlConnectionHttpClient;
 import software.amazon.awssdk.services.ses.SesClient;
 import software.amazon.awssdk.services.ses.model.Body;
 import software.amazon.awssdk.services.ses.model.Content;
@@ -17,7 +18,9 @@ public class SesWeeklyReportAdapter implements WeeklyReportPort {
 
     public SesWeeklyReportAdapter() {
         this(
-                SesClient.builder().build(),
+            SesClient.builder()
+                .httpClientBuilder(UrlConnectionHttpClient.builder())
+                .build(),
                 System.getenv().getOrDefault("SES_FROM", "no-reply@example.com"),
                 System.getenv().getOrDefault("SES_TO", "reports@example.com")
         );

@@ -2,6 +2,7 @@ package br.com.fiap.techchallenge4.adapters.outbound;
 
 import br.com.fiap.techchallenge4.application.port.out.CriticalNotificationPort;
 import br.com.fiap.techchallenge4.domain.model.Feedback;
+import software.amazon.awssdk.http.urlconnection.UrlConnectionHttpClient;
 import software.amazon.awssdk.services.ses.SesClient;
 import software.amazon.awssdk.services.ses.model.Body;
 import software.amazon.awssdk.services.ses.model.Content;
@@ -17,7 +18,9 @@ public class SesCriticalNotificationAdapter implements CriticalNotificationPort 
 
     public SesCriticalNotificationAdapter() {
         this(
-                SesClient.builder().build(),
+            SesClient.builder()
+                .httpClientBuilder(UrlConnectionHttpClient.builder())
+                .build(),
                 System.getenv().getOrDefault("SES_FROM", "no-reply@example.com"),
                 System.getenv().getOrDefault("SES_TO", "alerts@example.com")
         );

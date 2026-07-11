@@ -5,6 +5,7 @@ import br.com.fiap.techchallenge4.domain.model.Feedback;
 import br.com.fiap.techchallenge4.domain.model.Urgency;
 import br.com.fiap.techchallenge4.domain.valueobject.FeedbackContent;
 import br.com.fiap.techchallenge4.domain.valueobject.FeedbackId;
+import software.amazon.awssdk.http.urlconnection.UrlConnectionHttpClient;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.dynamodb.model.PutItemRequest;
@@ -22,7 +23,12 @@ public class DynamoDbFeedbackRepositoryAdapter implements FeedbackRepositoryPort
     private final String tableName;
 
     public DynamoDbFeedbackRepositoryAdapter() {
-        this(DynamoDbClient.builder().build(), System.getenv().getOrDefault("FEEDBACK_TABLE", "Feedback"));
+        this(
+            DynamoDbClient.builder()
+                .httpClientBuilder(UrlConnectionHttpClient.builder())
+                .build(),
+            System.getenv().getOrDefault("FEEDBACK_TABLE", "Feedback")
+        );
     }
 
     public DynamoDbFeedbackRepositoryAdapter(DynamoDbClient dynamoDbClient, String tableName) {

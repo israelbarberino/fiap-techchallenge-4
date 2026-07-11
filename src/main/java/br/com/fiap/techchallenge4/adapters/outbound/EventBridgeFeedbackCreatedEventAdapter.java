@@ -4,6 +4,7 @@ import br.com.fiap.techchallenge4.application.port.out.FeedbackCreatedEventPort;
 import br.com.fiap.techchallenge4.domain.model.Feedback;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import software.amazon.awssdk.http.urlconnection.UrlConnectionHttpClient;
 import software.amazon.awssdk.services.eventbridge.EventBridgeClient;
 import software.amazon.awssdk.services.eventbridge.model.PutEventsRequest;
 import software.amazon.awssdk.services.eventbridge.model.PutEventsRequestEntry;
@@ -16,7 +17,9 @@ public class EventBridgeFeedbackCreatedEventAdapter implements FeedbackCreatedEv
     private final EventBridgeClient eventBridgeClient;
 
     public EventBridgeFeedbackCreatedEventAdapter() {
-        this(EventBridgeClient.builder().build());
+        this(EventBridgeClient.builder()
+                .httpClientBuilder(UrlConnectionHttpClient.builder())
+                .build());
     }
 
     public EventBridgeFeedbackCreatedEventAdapter(EventBridgeClient eventBridgeClient) {
