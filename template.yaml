@@ -6,9 +6,11 @@ Parameters:
   SesFromEmail:
     Type: String
     Description: E-mail remetente verificado no SES
+    Default: ''
   SesToEmail:
     Type: String
     Description: E-mail destinatario verificado no SES
+    Default: ''
 
 Resources:
   HttpApi:
