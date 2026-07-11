@@ -14,7 +14,15 @@ import java.util.Map;
 @Named("weekly-report")
 public class WeeklyReportHandler implements RequestHandler<Map<String, Object>, Void> {
 
-    private final GenerateWeeklyReportInputPort useCase = ApplicationModule.generateWeeklyReportUseCase();
+    private final GenerateWeeklyReportInputPort useCase;
+
+    public WeeklyReportHandler() {
+        this(ApplicationModule.generateWeeklyReportUseCase());
+    }
+
+    WeeklyReportHandler(GenerateWeeklyReportInputPort useCase) {
+        this.useCase = useCase;
+    }
 
     @Override
     public Void handleRequest(Map<String, Object> event, Context context) {
