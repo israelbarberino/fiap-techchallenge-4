@@ -11,10 +11,12 @@ import com.amazonaws.services.lambda.runtime.events.APIGatewayV2HTTPEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayV2HTTPResponse;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.inject.Named;
 
 import java.util.Locale;
 import java.util.Map;
 
+@Named("create-feedback")
 public class CreateFeedbackHandler implements RequestHandler<APIGatewayV2HTTPEvent, APIGatewayV2HTTPResponse> {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();

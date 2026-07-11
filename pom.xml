@@ -40,7 +40,7 @@
   <dependencies>
     <dependency>
       <groupId>io.quarkus</groupId>
-      <artifactId>quarkus-amazon-lambda-http</artifactId>
+      <artifactId>quarkus-amazon-lambda</artifactId>
     </dependency>
     <dependency>
       <groupId>software.amazon.awssdk</groupId>
@@ -80,6 +80,15 @@
         <artifactId>quarkus-maven-plugin</artifactId>
         <version>${quarkus.platform.version}</version>
         <extensions>true</extensions>
+        <executions>
+          <execution>
+            <id>quarkus-build</id>
+            <phase>package</phase>
+            <goals>
+              <goal>build</goal>
+            </goals>
+          </execution>
+        </executions>
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
