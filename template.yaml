@@ -49,7 +49,7 @@ Resources:
                 Action:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
-                Resource: !Sub '${CreateFeedbackLogGroup.Arn}:*'
+                Resource: !Sub 'arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*:*'
         - PolicyName: create-feedback-dynamodb
           PolicyDocument:
             Version: '2012-10-17'
@@ -86,7 +86,7 @@ Resources:
                 Action:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
-                Resource: !Sub '${CriticalNotificationLogGroup.Arn}:*'
+                Resource: !Sub 'arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*:*'
         - PolicyName: critical-notification-ses
           PolicyDocument:
             Version: '2012-10-17'
@@ -115,7 +115,7 @@ Resources:
                 Action:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
-                Resource: !Sub '${WeeklyReportLogGroup.Arn}:*'
+                Resource: !Sub 'arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*:*'
         - PolicyName: weekly-report-dynamodb
           PolicyDocument:
             Version: '2012-10-17'
