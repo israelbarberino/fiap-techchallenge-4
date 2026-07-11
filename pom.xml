@@ -40,7 +40,7 @@
   <dependencies>
     <dependency>
       <groupId>io.quarkus</groupId>
-      <artifactId>quarkus-amazon-lambda-http</artifactId>
+      <artifactId>quarkus-amazon-lambda</artifactId>
     </dependency>
     <dependency>
       <groupId>software.amazon.awssdk</groupId>
