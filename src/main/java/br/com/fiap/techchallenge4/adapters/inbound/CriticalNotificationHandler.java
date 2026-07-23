@@ -17,7 +17,15 @@ import java.util.UUID;
 @Named("critical-notification")
 public class CriticalNotificationHandler implements RequestHandler<Map<String, Object>, Void> {
 
-    private final NotifyCriticalFeedbackInputPort useCase = ApplicationModule.notifyCriticalFeedbackUseCase();
+    private final NotifyCriticalFeedbackInputPort useCase;
+
+    public CriticalNotificationHandler() {
+        this(ApplicationModule.notifyCriticalFeedbackUseCase());
+    }
+
+    CriticalNotificationHandler(NotifyCriticalFeedbackInputPort useCase) {
+        this.useCase = useCase;
+    }
 
     @Override
     public Void handleRequest(Map<String, Object> event, Context context) {

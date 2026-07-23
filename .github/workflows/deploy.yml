@@ -50,13 +50,20 @@ jobs:
 
       - name: SAM Deploy
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: >
-          sam deploy
-          --template-file template.yaml
-          --stack-name fiap-techchallenge-4
-          --region ${{ secrets.AWS_REGION }}
-          --capabilities CAPABILITY_IAM
-          --resolve-s3
-          --parameter-overrides SesFromEmail=${{ secrets.SES_FROM_EMAIL }} SesToEmail=${{ secrets.SES_TO_EMAIL }}
-          --no-confirm-changeset
-          --no-fail-on-empty-changeset
+        env:
+          SES_FROM_EMAIL: ${{ secrets.SES_FROM_EMAIL }}
+          SES_TO_EMAIL: ${{ secrets.SES_TO_EMAIL }}
+        run: |
+          PARAMS=()
+          [ -n "$SES_FROM_EMAIL" ] && PARAMS+=("SesFromEmail=$SES_FROM_EMAIL")
+          [ -n "$SES_TO_EMAIL" ] && PARAMS+=("SesToEmail=$SES_TO_EMAIL")
+          CMD=(sam deploy
+            --template-file template.yaml
+            --stack-name fiap-techchallenge-4
+            --region "${{ secrets.AWS_REGION }}"
+            --capabilities CAPABILITY_IAM
+            --resolve-s3
+          )
+          [ ${#PARAMS[@]} -gt 0 ] && CMD+=(--parameter-overrides "${PARAMS[@]}")
+          CMD+=(--no-confirm-changeset --no-fail-on-empty-changeset)
+          "${CMD[@]}"

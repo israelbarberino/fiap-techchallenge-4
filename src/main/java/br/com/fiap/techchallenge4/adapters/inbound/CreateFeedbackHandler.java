@@ -20,11 +20,23 @@ import java.util.Map;
 public class CreateFeedbackHandler implements RequestHandler<APIGatewayV2HTTPEvent, APIGatewayV2HTTPResponse> {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-    private final CreateFeedbackInputPort useCase = ApplicationModule.createFeedbackUseCase();
+    private final CreateFeedbackInputPort useCase;
+
+    public CreateFeedbackHandler() {
+        this(ApplicationModule.createFeedbackUseCase());
+    }
+
+    CreateFeedbackHandler(CreateFeedbackInputPort useCase) {
+        this.useCase = useCase;
+    }
 
     @Override
     public APIGatewayV2HTTPResponse handleRequest(APIGatewayV2HTTPEvent event, Context context) {
         try {
+            if (isHealthCheck(event)) {
+                return response(200, toJson(Map.of("status", "ok")));
+            }
+
             CreateFeedbackRequest request = OBJECT_MAPPER.readValue(event.getBody(), CreateFeedbackRequest.class);
             CreateFeedbackCommand command = new CreateFeedbackCommand(
                     request.content,
@@ -54,6 +66,16 @@ public class CreateFeedbackHandler implements RequestHandler<APIGatewayV2HTTPEve
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("cannot serialize response");
         }
+    }
+
+    private boolean isHealthCheck(APIGatewayV2HTTPEvent event) {
+        if (event == null || event.getRequestContext() == null || event.getRequestContext().getHttp() == null) {
+            return false;
+        }
+
+        String method = event.getRequestContext().getHttp().getMethod();
+        String rawPath = event.getRawPath();
+        return "GET".equalsIgnoreCase(method) && "/health".equals(rawPath);
     }
 
     private static final class CreateFeedbackRequest {

@@ -84,6 +84,17 @@ API local:
 
 - POST <http://127.0.0.1:3000/feedback>
 
+Para gravacao de video com Postman:
+
+1. Importe a collection [postman/fiap-techchallenge-4.postman_collection.json](postman/fiap-techchallenge-4.postman_collection.json) e o environment [postman/fiap-techchallenge-4.postman_environment.json](postman/fiap-techchallenge-4.postman_environment.json).
+2. Selecione o environment `fiap-techchallenge-4`.
+3. Para uso local, mantenha `baseUrl` apontando para `http://127.0.0.1:3000`.
+4. Suba a API local com `sam local start-api --template template.yaml`.
+5. Execute primeiro o request `Healthcheck` e depois o request `Create feedback`.
+6. Para demonstrar a stack na AWS, troque `baseUrl` para `https://<HttpApiEndpoint>` e rode os mesmos requests novamente.
+7. Se quiser alternar rapido entre local e AWS, edite apenas o valor da variavel `baseUrl` no environment importado.
+8. O passo a passo da apresentacao e o resumo dos endpoints estao em [docs/video-guide.md](docs/video-guide.md).
+
 Exemplo de payload:
 
 ```json
